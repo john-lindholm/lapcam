@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  lapcam-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: lapcam-server
+    ports:
+      # HTTPS/WebSocket
+      - "8443:8080"
+      # WebRTC UDP
+      - "10000-10100:10000-10100/udp"
+      # WebRTC TCP
+      - "10000-10100:10000-10100/tcp"
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+      - DOMAIN=localhost
+      - PUBLIC_IP=127.0.0.1
+      - SSL_CERT_PATH=/app/certs/selfsigned.crt
+      - SSL_KEY_PATH=/app/certs/selfsigned.key
+      - ADMIN_PASSWORD=admin123
+      - JWT_SECRET=local-development-secret-key-change-in-production
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - S3_BUCKET=${S3_BUCKET:-lapcam-local-test}
+      - DATABASE_PATH=/var/lib/lapcam/lapcam.db
+      - RECORDING_ENABLED=true
+      - RECORDING_SEGMENT_DURATION=10
+      - BUFFER_DIR=/tmp/lapcam-server-buffer
+      - LOG_LEVEL=debug
+      - NUM_WORKERS=1
+    volumes:
+      - lapcam_data:/var/lib/lapcam
+      - lapcam_buffer:/tmp/lapcam-server-buffer
+      - ./certs:/app/certs:ro
+    networks:
+      - lapcam_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: LocalStack for S3 emulation (if not using real AWS)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: lapcam-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack/data
+      - DEFAULT_REGION=us-east-1
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    networks:
+      - lapcam_network
+    restart: unless-stopped
+    profiles:
+      - with-localstack
+
+  # Optional: Web UI development server
+  web-ui-dev:
+    image: node:20-slim
+    container_name: lapcam-web-ui-dev
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8443
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./web-ui:/app
+      - web_ui_node_modules:/app/node_modules
+    command: >
+      sh -c "npm install && npm start"
+    networks:
+      - lapcam_network
+    profiles:
+      - dev
+    depends_on:
+      - lapcam-server
+
+networks:
+  lapcam_network:
+    driver: bridge
+
+volumes:
+  lapcam_data:
+  lapcam_buffer:
+  localstack_data:
+  web_ui_node_modules:

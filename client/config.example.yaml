@@ -1,0 +1,44 @@
+# LapCam Client Configuration
+
+# Server connection
+server:
+  url: "wss://sec.sigma-chat.biz"
+  # Get this from server after registration
+  api_key: "your-api-key-here"
+
+# Camera settings
+camera:
+  # Device index (0 = default camera)
+  device_index: 0
+  # Resolution
+  width: 1280
+  height: 720
+  # Frame rate
+  framerate: 30
+
+# Streaming settings
+stream:
+  # Unique camera name/ID (used for identification)
+  camera_name: "kitchen-laptop"
+  # Video bitrate (kbps)
+  video_bitrate: 500
+  # Enable motion detection
+  motion_detection: true
+  # Motion detection sensitivity (0-1, lower = more sensitive)
+  motion_sensitivity: 0.3
+  # Minimum motion area to trigger recording (pixels)
+  motion_min_area: 500
+
+# Recording settings (for local buffering)
+recording:
+  # Enable continuous recording
+  continuous: true
+  # Segment duration in seconds
+  segment_duration: 10
+  # Local buffer directory
+  buffer_dir: "/tmp/lapcam-buffer"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "/var/log/lapcam/client.log"

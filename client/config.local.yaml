@@ -1,0 +1,32 @@
+# LapCam Local Development Configuration
+
+# Server (connects to localhost)
+server:
+  url: "wss://localhost:8443"
+  api_key: "local-test-api-key"
+
+# Camera settings
+camera:
+  device_index: 0
+  width: 1280
+  height: 720
+  framerate: 30
+
+# Streaming settings
+stream:
+  camera_name: "test-camera"
+  video_bitrate: 500
+  motion_detection: true
+  motion_sensitivity: 0.3
+  motion_min_area: 500
+
+# Recording settings
+recording:
+  continuous: true
+  segment_duration: 10
+  buffer_dir: "/tmp/lapcam-buffer"
+
+# Logging
+logging:
+  level: "DEBUG"
+  file: "/tmp/lapcam/client.log"

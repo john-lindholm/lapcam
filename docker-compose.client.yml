@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  lapcam-client:
+    image: python:3.11-slim
+    container_name: lapcam-test-client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    environment:
+      - CAMERA_NAME=test-camera-docker
+      - SERVER_URL=wss://host.docker.internal:8443
+      - API_KEY=local-test-api-key
+      - MOTION_DETECTION=true
+    volumes:
+      - ./client/config.local.yaml:/app/config.yaml:ro
+      - /dev/video0:/dev/video0  # Host camera
+      - lapcam_client_buffer:/tmp/lapcam-buffer
+    devices:
+      - /dev/video0:/dev/video0  # Alternative device mapping
+    network_mode: "host"  # Use host network for WebRTC
+    depends_on:
+      - lapcam-server
+    restart: unless-stopped
+    profiles:
+      - client
+
+# Note: For this to work, you need:
+# 1. A webcam connected to your host machine
+# 2. Server running with host.docker.internal accessible
+# 3. On Linux, you may need to add extra_hosts in server config

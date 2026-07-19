@@ -1,0 +1,24 @@
+# LapCam Terraform Variables
+
+# Your domain (already set in the prompt)
+domain = "sec.sigma-chat.biz"
+
+# AWS region
+aws_region = "us-east-1"
+
+# EC2 instance type (t3.medium is good for a few cameras)
+instance_type = "t3.medium"
+
+# Ubuntu 22.04 LTS AMI (us-east-1)
+# Find latest: aws ec2 describe-images --owners 099720109477 --filters "Name=name,Values=ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*" --query "Images | sort_by(@, &CreationDate) | [-1].ImageId"
+ami_id = ""  # Leave empty to use default lookup
+
+# Your EC2 key pair name (must exist in AWS)
+key_name = "your-key-pair-name"
+
+# DNS settings
+create_dns_record = false  # Set to true if using Route53
+hosted_zone_id = ""        # Your Route53 hosted zone ID
+
+# Admin password for web UI (CHANGE THIS!)
+admin_password = "ChangeMeInProduction123!"
