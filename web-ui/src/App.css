@@ -16,16 +16,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* App Layout */
 .app { min-height: 100vh; display: flex; flex-direction: column; }
-.header { background: rgba(20,20,20,0.95); backdrop-filter: blur(10px); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0; z-index: 100; }
-.header-left { display: flex; align-items: center; gap: 16px; }
-.menu-toggle { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-.menu-toggle:hover { background: rgba(255,255,255,0.2); }
-.header h1 { font-size: 1.4rem; font-weight: 600; }
-.header-actions { display: flex; gap: 12px; }
-.manage-cameras-btn { padding: 8px 16px; background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1px solid #2196F3; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
-.manage-cameras-btn:hover { background: #2196F3; color: #fff; }
-.logout-btn { padding: 8px 16px; background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
-.logout-btn:hover { background: #f44336; color: #fff; }
+.header { background: rgba(20,20,20,0.95); backdrop-filter: blur(10px); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0; z-index: 100; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.sidebar-toggle { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
+.sidebar-toggle:hover { background: rgba(255,255,255,0.2); }
+.header h1 { font-size: 1.2rem; font-weight: 600; margin: 0; }
+
+/* Menu Button (Hamburger) */
+.menu-button { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 20px; line-height: 1; transition: background 0.2s; }
+.menu-button:hover { background: rgba(255,255,255,0.2); }
+
+/* Menu Dropdown */
+.menu-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 999; }
+.menu-dropdown { position: absolute; top: 56px; right: 16px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 8px; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.menu-item { display: block; width: 100%; padding: 12px 16px; background: none; border: none; color: #fff; text-align: left; cursor: pointer; border-radius: 6px; font-size: 15px; transition: background 0.2s; }
+.menu-item:hover { background: rgba(255,255,255,0.1); }
+.menu-item.logout { color: #f44336; }
+.menu-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 8px 0; }
 
 /* Modal */
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; justify-content: center; align-items: center; }
@@ -98,9 +105,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .dashboard { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 
 /* Sidebar */
-.sidebar { background: #141414; border-right: 1px solid rgba(255,255,255,0.08); overflow-y: auto; transition: all 0.3s ease; }
-.sidebar.closed { width: 0; padding: 0; border: none; overflow: hidden; }
+.sidebar { background: #141414; border-right: 1px solid rgba(255,255,255,0.08); overflow-y: auto; transition: all 0.3s ease; position: fixed; left: 0; top: 56px; bottom: 0; width: 280px; z-index: 90; transform: translateX(-100%); }
+.sidebar.open { transform: translateX(0); }
+.sidebar.closed { transform: translateX(-100%); }
 .camera-list { padding: 16px; }
+
+/* Overlay when sidebar is open on mobile */
+.sidebar-overlay { position: fixed; top: 56px; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 89; }
 .camera-list h2 { margin-bottom: 12px; font-size: 0.85rem; font-weight: 600; color: #4CAF50; text-transform: uppercase; letter-spacing: 0.5px; }
 .camera-item { background: rgba(255,255,255,0.05); padding: 14px; border-radius: 10px; margin-bottom: 10px; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
 .camera-item:hover { background: rgba(255,255,255,0.08); }
@@ -146,21 +157,25 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .no-camera { display: flex; justify-content: center; align-items: center; height: 50vh; color: #555; font-size: 1rem; }
 .no-events { color: #555; font-size: 0.85rem; text-align: center; padding: 20px; }
 
-/* Desktop Layout */
+/* Tablet Layout */
 @media (min-width: 768px) {
   .dashboard { flex-direction: row; }
-  .sidebar { width: 340px; flex-shrink: 0; }
+  .sidebar { width: 320px; flex-shrink: 0; }
   .sidebar.closed { width: 0; }
   .main-content { padding: 24px; }
   .stream-viewer img { max-height: 60vh; }
-  .header { padding: 20px 32px; }
-  .header h1 { font-size: 1.6rem; }
+  .header { padding: 16px 24px; }
+  .header h1 { font-size: 1.4rem; }
+  
+  /* Show header buttons on desktop, hide hamburger */
+  .menu-button { display: none; }
 }
 
 /* Large Desktop */
 @media (min-width: 1200px) {
   .sidebar { width: 360px; }
   .main-content { padding: 32px; }
+  .stream-viewer img { max-height: 70vh; }
 }
 
 /* Recordings Panel */

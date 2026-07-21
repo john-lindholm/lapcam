@@ -11,7 +11,8 @@ function App() {
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [motionPanelOpen, setMotionPanelOpen] = useState(true);
   const [recordingsPanelOpen, setRecordingsPanelOpen] = useState(true);
   const [showCameraManager, setShowCameraManager] = useState(false);
@@ -131,6 +132,25 @@ function App() {
 
   return (
     <div className="app">
+      {/* Top Menu Overlay */}
+      {menuOpen && (
+        <div className="menu-overlay" onClick={() => setMenuOpen(false)}>
+          <div className="menu-dropdown" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => { setShowCameraManager(true); setMenuOpen(false); }} className="menu-item">
+              📷 Manage Cameras
+            </button>
+            <button onClick={() => { setSidebarOpen(true); setMenuOpen(false); }} className="menu-item">
+              📺 Show Sidebar
+            </button>
+            <hr className="menu-divider" />
+            <button onClick={handleLogout} className="menu-item logout">
+              🚪 Logout
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Camera Manager Modal */}
       {showCameraManager && (
         <div className="modal-overlay" onClick={() => { setShowCameraManager(false); setGeneratedKey(null); }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -178,16 +198,19 @@ function App() {
 
       <header className="header">
         <div className="header-left">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="menu-toggle">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="menu-toggle sidebar-toggle">
             {sidebarOpen ? '◀' : '▶'}
           </button>
-          <h1>📹 LapCam Dashboard</h1>
+          <h1>📹 LapCam</h1>
         </div>
-        <div className="header-actions">
-          <button onClick={() => setShowCameraManager(true)} className="manage-cameras-btn">📷 Cameras</button>
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
-        </div>
+        <button onClick={() => setMenuOpen(!menuOpen)} className="menu-button">
+          ☰
+        </button>
       </header>
+      
+      {/* Sidebar overlay for mobile */}
+      {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
+      
       <div className="dashboard">
         <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <div className="camera-list">
