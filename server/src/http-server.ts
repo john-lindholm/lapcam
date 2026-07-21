@@ -204,6 +204,35 @@ app.get('/api/recordings/:cameraName', async (req, res) => {
   }
 });
 
+// Serve individual recording from S3
+app.get('/api/recordings/:cameraName/:filename', async (req, res) => {
+  const token = req.query.token as string;
+  const cameraName = req.params.cameraName;
+  const filename = req.params.filename;
+  
+  try {
+    if (token) jwt.verify(token, config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const key = `recordings/${cameraName}/${filename}`;
+  
+  try {
+    const obj = await s3.getObject({
+      Bucket: config.s3Bucket,
+      Key: key
+    }).promise();
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Length', obj.ContentLength || 0);
+    res.send(obj.Body);
+  } catch (err: any) {
+    console.error('S3 get error:', err.message);
+    res.status(404).json({ error: 'Recording not found' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -189,6 +189,7 @@ function MotionEvents({ cameraId, token }) {
 function Recordings({ cameraName, token }) {
   const [recordings, setRecordings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedRecording, setSelectedRecording] = useState(null);
   
   useEffect(() => {
     fetchRecordings();
@@ -211,13 +212,34 @@ function Recordings({ cameraName, token }) {
     }
   };
   
+  const playRecording = (rec) => {
+    setSelectedRecording(rec);
+  };
+  
+  const closePlayer = () => {
+    setSelectedRecording(null);
+  };
+  
   if (loading) return <div className="no-events">Loading...</div>;
   if (recordings.length === 0) return <div className="no-events">No recordings yet</div>;
+  
+  if (selectedRecording) {
+    const imageUrl = `${API_URL}/api/recordings/${cameraName}/${encodeURIComponent(selectedRecording.key.split('/').pop())}?token=${token}`;
+    return (
+      <div className="video-player">
+        <img src={imageUrl} alt="Recording" style={{maxWidth: '100%', maxHeight: '400px'}} />
+        <div className="recording-info" style={{marginTop: '10px'}}>
+          {new Date(selectedRecording.timestamp).toLocaleString()} - {selectedRecording.size} KB
+        </div>
+        <button onClick={closePlayer} className="close-player">Close</button>
+      </div>
+    );
+  }
   
   return (
     <div className="recordings-list">
       {recordings.map((rec, idx) => (
-        <div key={idx} className="recording-item">
+        <div key={idx} className="recording-item clickable" onClick={() => playRecording(rec)}>
           <div className="recording-time">{new Date(rec.timestamp).toLocaleString()}</div>
           <div className="recording-info">{rec.size} KB</div>
         </div>
