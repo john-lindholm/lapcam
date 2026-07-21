@@ -9,7 +9,6 @@ build/
 venv/
 env/
 *.exe
-*.spec
 
 # IDE
 .vscode/
