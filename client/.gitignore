@@ -1,0 +1,22 @@
+# Sensitive configuration files
+config.aws.yaml
+config.*.yaml
+!config.example.yaml
+
+# Build artifacts
+dist/
+build/
+venv/
+env/
+*.exe
+*.spec
+
+# IDE
+.vscode/
+.idea/
+*.pyc
+__pycache__/
+
+# Logs
+logs/
+*.log
