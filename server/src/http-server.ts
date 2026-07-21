@@ -8,7 +8,7 @@ import { db } from './db';
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.raw({ limit: '1mb', type: 'application/octet-stream' }));
+app.use(express.raw({ limit: '50mb', type: 'application/octet-stream' })); // Increased for video uploads
 import path from 'path';
 app.use(express.static(path.join(__dirname, '../web-ui/build')));
 
@@ -199,6 +199,40 @@ app.post('/api/snapshots', async (req, res) => {
   }
 });
 
+// Upload video separately
+app.post('/api/videos', async (req, res) => {
+  const apiKey = req.headers['x-api-key'] as string;
+  
+  if (!apiKey) return res.status(400).json({ error: 'API key required' });
+  
+  const camera = db.getCameraByApiKey(apiKey);
+  if (!camera) return res.status(401).json({ error: 'Invalid API key' });
+  
+  const videoBuffer = req.body as Buffer;
+  if (!videoBuffer || !(videoBuffer instanceof Buffer)) {
+    return res.status(400).json({ error: 'Video data required' });
+  }
+  
+  const timestamp = Date.now();
+  const s3Key = `videos/${camera.name}/${timestamp}.mp4`;
+  
+  try {
+    await s3.putObject({
+      Bucket: config.s3Bucket,
+      Key: s3Key,
+      Body: videoBuffer,
+      ContentType: 'video/mp4'
+    }).promise();
+    
+    const videoUrl = `https://${config.s3Bucket}.s3.amazonaws.com/${s3Key}`;
+    console.log(`Video uploaded: ${s3Key} (${Math.round(videoBuffer.length / 1024)} KB)`);
+    res.json({ success: true, url: videoUrl, key: s3Key });
+  } catch (err: any) {
+    console.error('S3 video error:', err.message);
+    res.status(500).json({ error: 'Failed to upload video' });
+  }
+});
+
 app.get('/api/motion-events', async (req, res) => {
   const cameraId = req.query.cameraId as string;
   if (!cameraId) {
@@ -296,6 +330,65 @@ app.get('/api/recordings/:cameraName/:filename', async (req, res) => {
   } catch (err: any) {
     console.error('S3 get error:', err.message);
     res.status(404).json({ error: 'Recording not found' });
+  }
+});
+
+// Serve snapshot from S3
+app.get('/api/snapshots/:cameraName/:filename', async (req, res) => {
+  const token = req.query.token as string;
+  const cameraName = req.params.cameraName;
+  const filename = req.params.filename;
+  
+  try {
+    if (token) jwt.verify(token, config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const key = `snapshots/${cameraName}/${filename}`;
+  
+  try {
+    const obj = await s3.getObject({
+      Bucket: config.s3Bucket,
+      Key: key
+    }).promise();
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Length', obj.ContentLength || 0);
+    res.send(obj.Body);
+  } catch (err: any) {
+    console.error('S3 snapshot error:', err.message);
+    res.status(404).json({ error: 'Snapshot not found' });
+  }
+});
+
+// Serve video from S3
+app.get('/api/videos/:cameraName/:filename', async (req, res) => {
+  const token = req.query.token as string;
+  const cameraName = req.params.cameraName;
+  const filename = req.params.filename;
+  
+  try {
+    if (token) jwt.verify(token, config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const key = `videos/${cameraName}/${filename}`;
+  
+  try {
+    const obj = await s3.getObject({
+      Bucket: config.s3Bucket,
+      Key: key
+    }).promise();
+    
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Length', obj.ContentLength || 0);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.send(obj.Body);
+  } catch (err: any) {
+    console.error('S3 video error:', err.message);
+    res.status(404).json({ error: 'Video not found' });
   }
 });
 

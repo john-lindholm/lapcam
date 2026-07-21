@@ -20,6 +20,8 @@ from datetime import datetime
 import cv2
 import numpy as np
 from aiohttp import ClientSession, ClientError
+import tempfile
+import os
 
 
 logging.basicConfig(
@@ -143,6 +145,15 @@ class LapCamClient:
         self.frames_sent = 0
         self.last_heartbeat = 0
 
+        # Video recording buffer (10 seconds pre-motion at 15fps = 150 frames)
+        self.framerate = config["camera"]["framerate"]
+        self.pre_buffer_seconds = 10
+        self.post_buffer_seconds = 20
+        self.buffer_size = self.framerate * self.pre_buffer_seconds
+        self.frame_buffer = []
+        self.is_recording = False
+        self.recording_frames = []
+
     async def send_frame(self, session: ClientSession, frame: np.ndarray) -> bool:
         """Send frame to server via HTTP POST"""
         server_url = self.config["server"]["url"]
@@ -221,6 +232,88 @@ class LapCamClient:
         except Exception as e:
             logger.error(f"Motion event error: {e}")
 
+    async def record_video(self, session: ClientSession, trigger_frame: np.ndarray):
+        """Record video with pre-motion buffer and post-motion continuation"""
+        server_url = self.config["server"]["url"]
+        headers = {
+            "X-API-Key": self.config["server"]["api_key"],
+            "Content-Type": "application/octet-stream",
+        }
+
+        # Add trigger frame to buffer
+        self.frame_buffer.append(trigger_frame)
+
+        # Start recording from buffer
+        self.is_recording = True
+        self.recording_frames = list(self.frame_buffer[-self.buffer_size :])
+
+        logger.info(
+            f"🎥 Starting video recording ({len(self.recording_frames)} frames in buffer)"
+        )
+
+        # Continue recording for post_buffer_seconds
+        post_frames_needed = self.framerate * self.post_buffer_seconds
+        frames_recorded = 0
+
+        while frames_recorded < post_frames_needed and self.running:
+            await asyncio.sleep(1.0 / self.framerate)
+            frame = await asyncio.get_event_loop().run_in_executor(
+                None, self.capture.read
+            )
+            if frame is not None:
+                self.recording_frames.append(frame)
+                frames_recorded += 1
+
+        # Encode to MP4
+        self.is_recording = False
+        logger.info(f"🎥 Encoding video ({len(self.recording_frames)} frames)...")
+
+        try:
+            # Create temp file
+            temp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+            temp_path = temp_file.name
+            temp_file.close()
+
+            # Get frame dimensions
+            height, width = self.recording_frames[0].shape[:2]
+
+            # Create VideoWriter
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            out = cv2.VideoWriter(temp_path, fourcc, self.framerate, (width, height))
+
+            for frame in self.recording_frames:
+                out.write(frame)
+
+            out.release()
+
+            # Upload to S3
+            with open(temp_path, "rb") as f:
+                video_data = f.read()
+
+            timestamp = int(datetime.now().timestamp())
+            upload_resp = await session.post(
+                f"{server_url}/api/videos", data=video_data, headers=headers
+            )
+
+            if upload_resp.status == 200:
+                video_data_response = await upload_resp.json()
+                video_url = video_data_response.get("url")
+                logger.info(f"🎥 Video uploaded: {video_url}")
+                return video_url
+            else:
+                logger.error(f"Video upload failed: {upload_resp.status}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Video recording error: {e}")
+            return None
+        finally:
+            # Clean up temp file
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+
     async def run(self):
         """Main client loop"""
         self.running = True
@@ -245,6 +338,11 @@ class LapCamClient:
                     # Send frame to server
                     await self.send_frame(session, frame)
 
+                    # Maintain rolling buffer for video recording
+                    if self.frame_buffer and len(self.frame_buffer) >= self.buffer_size:
+                        self.frame_buffer.pop(0)
+                    self.frame_buffer.append(frame.copy())
+
                     # Motion detection
                     if self.motion_detector:
                         motion, confidence = (
@@ -257,6 +355,10 @@ class LapCamClient:
                             or now - last_motion_time > motion_cooldown
                         ):
                             last_motion_time = now
+
+                            # Start video recording in background
+                            asyncio.create_task(self.record_video(session, frame))
+
                             await self.send_motion_event(
                                 session, confidence, now, frame
                             )

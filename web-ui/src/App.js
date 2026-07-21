@@ -305,9 +305,23 @@ function MotionEvents({ cameraId, token }) {
   if (events.length === 0) return <div className="no-events">No recent motion detected</div>;
   
   if (selectedEvent) {
+    const filename = selectedEvent.screenshot ? selectedEvent.screenshot.split('/').pop() : null;
+    
     return (
       <div className="motion-event-detail">
-        <img src={`${API_URL}/api/snapshots/${selectedEvent.cameraName}/${selectedEvent.screenshot.split('/').pop()}?token=${token}`} alt="Motion snapshot" />
+        {filename && (
+          <img 
+            src={`${API_URL}/api/snapshots/${selectedEvent.cameraName}/${filename}?token=${token}`} 
+            alt="Motion snapshot" 
+            className="motion-snapshot"
+          />
+        )}
+        {selectedEvent.video && (
+          <video controls className="motion-video">
+            <source src={`${API_URL}/api/videos/${selectedEvent.cameraName}/${selectedEvent.video.split('/').pop()}?token=${token}`} type="video/mp4" />
+            Your browser does not support video playback.
+          </video>
+        )}
         <div className="event-info">
           <strong>{new Date(selectedEvent.timestamp).toLocaleString()}</strong>
           <span>{Math.round(selectedEvent.confidence)}% confidence</span>
@@ -322,8 +336,8 @@ function MotionEvents({ cameraId, token }) {
       {events.slice(0, 15).map(event => (
         <div 
           key={event.id} 
-          className={`event-item ${event.screenshot ? 'has-screenshot' : ''}`}
-          onClick={() => event.screenshot && setSelectedEvent(event)}
+          className={`event-item ${(event.screenshot || event.video) ? 'has-media' : ''}`}
+          onClick={() => (event.screenshot || event.video) && setSelectedEvent(event)}
         >
           {event.screenshot && (
             <img 
@@ -335,7 +349,8 @@ function MotionEvents({ cameraId, token }) {
           <div className="event-details">
             <span className="event-time">{new Date(event.timestamp).toLocaleTimeString()}</span>
             <span className="event-confidence">{Math.round(event.confidence)}%</span>
-            {event.screenshot && <span className="screenshot-badge">📸</span>}
+            {event.screenshot && <span className="media-badge">📸</span>}
+            {event.video && <span className="media-badge">🎥</span>}
           </div>
         </div>
       ))}
