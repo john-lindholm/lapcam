@@ -107,9 +107,9 @@ $settings = New-ScheduledTaskSettingsSet `
 if ($usingExe) {
     # Using compiled .exe
     $action = New-ScheduledTaskAction `
-        -Execute $ClientPath `
-        -Argument "--config `"$ConfigPath`"" `
-        -WorkingDirectory (Split-Path $ClientPath)
+        -Execute "C:\LapCam\LapCamClient.exe" `
+        -Argument "--config `"C:\LapCam\config.aws.yaml`"" `
+        -WorkingDirectory "C:\LapCam"
 } else {
     # Using Python script
     $action = New-ScheduledTaskAction `
