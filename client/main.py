@@ -168,6 +168,7 @@ class LapCamClient:
             async with session.post(url, data=frame_bytes, headers=headers) as resp:
                 if resp.status == 200:
                     self.frames_sent += 1
+                    logger.debug(f"Frame uploaded ({self.frames_sent} total)")
                     return True
                 else:
                     logger.error(f"Frame upload failed: {resp.status}")
