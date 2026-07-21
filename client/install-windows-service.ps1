@@ -8,7 +8,6 @@ param(
 )
 
 $taskName = "LapCam Client"
-$serviceName = "LapCamClient"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host " LapCam Client - Windows Service Setup" -ForegroundColor Cyan
