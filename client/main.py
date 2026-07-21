@@ -321,4 +321,11 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        # Clean exit on Ctrl+C (especially for Windows)
+        pass
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise
