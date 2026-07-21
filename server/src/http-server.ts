@@ -149,8 +149,8 @@ app.post('/api/motion-events', async (req, res) => {
   
   const event = {
     id: `motion-${Date.now()}`,
-    cameraId,
-    cameraName: cameraName || camera.name,
+    cameraId: camera.id,
+    cameraName: camera.name,
     timestamp: timestamp || new Date().toISOString(),
     confidence: confidence || 0
   };
@@ -164,7 +164,11 @@ app.post('/api/motion-events', async (req, res) => {
 
 app.get('/api/motion-events', async (req, res) => {
   const cameraId = req.query.cameraId as string;
-  const events = motionEvents.filter(e => !cameraId || e.cameraId === cameraId).slice(0, 50);
+  if (!cameraId) {
+    return res.json(motionEvents.slice(0, 50));
+  }
+  // Filter by either camera ID (UUID) or camera name
+  const events = motionEvents.filter(e => e.cameraId === cameraId || e.cameraName === cameraId).slice(0, 50);
   res.json(events);
 });
 
