@@ -1,0 +1,78 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a1a; color: #fff; }
+
+.login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+.login-box { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 10px; backdrop-filter: blur(10px); width: 100%; max-width: 400px; }
+.login-box h1 { text-align: center; margin-bottom: 30px; font-size: 2.5rem; }
+.login-box form { display: flex; flex-direction: column; gap: 15px; }
+.login-box input { padding: 12px 15px; border: none; border-radius: 5px; background: rgba(255,255,255,0.9); font-size: 16px; }
+.login-box button { padding: 12px 15px; border: none; border-radius: 5px; background: #4CAF50; color: white; font-size: 16px; cursor: pointer; }
+.login-box button:hover { background: #45a049; }
+.error { background: #f44336; color: white; padding: 10px; border-radius: 5px; text-align: center; }
+
+.app { min-height: 100vh; }
+.header { background: #2d2d2d; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4CAF50; }
+.header h1 { font-size: 1.8rem; }
+.logout-btn { padding: 8px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+.dashboard { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 70px); }
+
+.sidebar { background: #2d2d2d; border-right: 1px solid #3a3a3a; overflow-y: auto; }
+.camera-list { padding: 20px; border-bottom: 1px solid #3a3a3a; }
+.camera-list h2 { margin-bottom: 15px; font-size: 1.2rem; color: #4CAF50; }
+.camera-item { background: #3a3a3a; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; }
+.camera-item:hover { background: #454545; }
+.camera-item.selected { border-left-color: #4CAF50; background: #4a4a4a; }
+.camera-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; }
+.camera-status { font-size: 0.9rem; color: #aaa; margin-bottom: 5px; }
+.camera-last-seen { font-size: 0.75rem; color: #666; }
+
+.recordings-panel { padding: 20px; }
+.recordings-panel h2 { margin-bottom: 15px; font-size: 1.2rem; color: #2196F3; }
+.recordings-list { font-size: 0.9rem; }
+.recording-item { background: #3a3a3a; padding: 12px; border-radius: 6px; margin-bottom: 8px; }
+.recording-time { font-weight: bold; font-size: 0.85rem; }
+.recording-info { color: #888; font-size: 0.8rem; }
+
+.main-content { padding: 30px; overflow-y: auto; }
+.stream-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.stream-header h2 { color: #4CAF50; }
+.live-badge { padding: 6px 15px; border-radius: 20px; background: #444; font-size: 0.85rem; font-weight: bold; }
+.live-badge.live { background: #f44336; animation: pulse 2s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.stream-viewer { background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+.status { padding: 10px 20px; background: #2d2d2d; font-size: 0.9rem; }
+.status.live { color: #4CAF50; }
+.stream-viewer img { width: 100%; max-height: 60vh; object-fit: contain; display: block; }
+
+.motion-events { background: #2d2d2d; border-radius: 10px; padding: 20px; margin-top: 20px; }
+.motion-events h3 { margin-bottom: 15px; color: #FF9800; }
+.events-list { display: flex; flex-direction: column; gap: 8px; }
+.event-item { background: #3a3a3a; padding: 10px 15px; border-radius: 6px; display: flex; justify-content: space-between; font-size: 0.85rem; }
+.event-time { color: #aaa; }
+.event-confidence { color: #FF9800; font-weight: bold; }
+
+.no-camera { display: flex; justify-content: center; align-items: center; height: 60vh; color: #666; font-size: 1.2rem; }
+
+@media (max-width: 768px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .sidebar { max-height: 300px; }
+}
+
+.recordings-panel { padding: 20px; }
+.recordings-panel h2 { margin-bottom: 15px; font-size: 1.2rem; color: #2196F3; }
+.recordings-list { font-size: 0.9rem; }
+.recording-item { background: #3a3a3a; padding: 12px; border-radius: 6px; margin-bottom: 8px; transition: all 0.2s; }
+.recording-item.clickable { cursor: pointer; border-left: 3px solid transparent; }
+.recording-item.clickable:hover { background: #454545; border-left-color: #2196F3; }
+.recording-time { font-weight: bold; font-size: 0.85rem; color: #fff; }
+.recording-info { color: #888; font-size: 0.75rem; margin-top: 4px; }
+
+.video-player { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: center; }
+.close-player { margin-top: 10px; padding: 8px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; }
+.close-player:hover { background: #d32f2f; }

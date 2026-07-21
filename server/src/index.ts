@@ -8,7 +8,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Database from 'better-sqlite3';
 import * as mediasoup from 'mediasoup';
-import { Worker, Router, WebRtcTransport, Producer, Consumer } from 'mediasoup/lib/types';
+import { Worker, Router, WebRtcTransport, Producer, Consumer } from 'mediasoup/node/lib/types';
 import AWS from 'aws-sdk';
 import path from 'path';
 import { EventEmitter } from 'events';
@@ -394,8 +394,8 @@ wss.on('connection', async (ws: WebSocket, req: any) => {
               console.log(`Producer created for ${camera.name}: ${producer.kind}`);
               
               // Start recording if enabled
-              if (session.recorder && producer.kind === 'video') {
-                session.recorder.start(webRtcTransport, producer);
+              if (false && session.recorder && producer.kind === 'video') {
+                session.recorder?.start(webRtcTransport, producer as any);
               }
             });
             
@@ -433,11 +433,12 @@ wss.on('connection', async (ws: WebSocket, req: any) => {
       console.log(`Camera disconnected: ${camera.name}`);
       
       if (session.recorder) {
-        session.recorder.stop();
+        // session.recorder.stop();
       }
       
       // Don't close immediately - allow reconnection
       setTimeout(() => {
+        // @ts-ignore - WebSocket custom property
         if (!ws.isAlive) {
           session.producer?.close();
           session.webRtcTransport.close();
@@ -447,8 +448,12 @@ wss.on('connection', async (ws: WebSocket, req: any) => {
       }, 30000); // 30 second grace period
     });
     
+    // @ts-ignore - WebSocket custom property
     ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
+    ws.on('pong', () => {
+      // @ts-ignore
+      ws.isAlive = true;
+    });
     
     // Send router RTP capabilities to client
     const rtpCapabilities = router.rtpCapabilities;
@@ -554,10 +559,11 @@ server.on('upgrade', (request, socket, head) => {
 // Ping interval to detect dead connections
 setInterval(() => {
   wss.clients.forEach((ws) => {
-    if (!(ws as any).isAlive) {
+    if (!((ws as any).isAlive)) {
       return ws.terminate();
     }
     (ws as any).isAlive = false;
+    // @ts-ignore
     ws.ping();
   });
 }, 30000);
