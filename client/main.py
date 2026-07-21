@@ -83,7 +83,14 @@ class CameraCapture:
         self.running = False
 
     def start(self) -> bool:
-        self.cap = cv2.VideoCapture(self.device_index)
+        import platform
+
+        # Use DirectShow on Windows (more reliable than MSMF)
+        if platform.system() == "Windows":
+            self.cap = cv2.VideoCapture(self.device_index, cv2.CAP_DSHOW)
+        else:
+            self.cap = cv2.VideoCapture(self.device_index)
+
         if not self.cap.isOpened():
             logger.error(f"Failed to open camera {self.device_index}")
             return False
