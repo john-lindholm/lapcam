@@ -103,10 +103,16 @@ function App() {
             ))}
           </div>
           {selectedCamera && (
-            <div className="motion-panel">
-              <h2>🔍 Recent Motion</h2>
-              <MotionEvents cameraId={selectedCamera.id} token={token} />
-            </div>
+            <>
+              <div className="motion-panel">
+                <h2>🔍 Recent Motion</h2>
+                <MotionEvents cameraId={selectedCamera.id} token={token} />
+              </div>
+              <div className="recordings-panel">
+                <h2>📁 Recordings</h2>
+                <Recordings cameraName={selectedCamera.name} token={token} />
+              </div>
+            </>
           )}
         </div>
         <div className="main-content">
@@ -173,7 +179,47 @@ function MotionEvents({ cameraId, token }) {
       {events.slice(0, 15).map(event => (
         <div key={event.id} className="event-item">
           <span className="event-time">{new Date(event.timestamp).toLocaleTimeString()}</span>
-          <span className="event-confidence">{event.confidence}%</span>
+          <span className="event-confidence">{Math.round(event.confidence)}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Recordings({ cameraName, token }) {
+  const [recordings, setRecordings] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  useEffect(() => {
+    fetchRecordings();
+  }, [cameraName, token]);
+  
+  const fetchRecordings = async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`${API_URL}/api/recordings/${cameraName}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        setRecordings(data.slice(0, 20));
+      }
+    } catch (err) {
+      console.error('Failed to fetch recordings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  if (loading) return <div className="no-events">Loading...</div>;
+  if (recordings.length === 0) return <div className="no-events">No recordings yet</div>;
+  
+  return (
+    <div className="recordings-list">
+      {recordings.map((rec, idx) => (
+        <div key={idx} className="recording-item">
+          <div className="recording-time">{new Date(rec.timestamp).toLocaleString()}</div>
+          <div className="recording-info">{rec.size} KB</div>
         </div>
       ))}
     </div>

@@ -172,6 +172,38 @@ app.get('/api/motion-events', async (req, res) => {
   res.json(events);
 });
 
+// Get recordings from S3
+app.get('/api/recordings/:cameraName', async (req, res) => {
+  const token = req.query.token as string || req.headers.authorization?.replace('Bearer ', '');
+  const cameraName = req.params.cameraName;
+  
+  try {
+    if (token) jwt.verify(token, config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  try {
+    const prefix = `recordings/${cameraName}/`;
+    const data = await s3.listObjectsV2({
+      Bucket: config.s3Bucket,
+      Prefix: prefix,
+      MaxKeys: 50
+    }).promise();
+    
+    const recordings = data.Contents?.map(obj => ({
+      key: obj.Key,
+      timestamp: obj.LastModified?.toISOString() || '',
+      size: Math.round((obj.Size || 0) / 1024)
+    })).reverse().slice(0, 50) || [];
+    
+    res.json(recordings);
+  } catch (err: any) {
+    console.error('S3 error:', err.message);
+    res.json([]);
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
