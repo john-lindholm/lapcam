@@ -61,7 +61,19 @@ export const db = {
   
   getCameraById: (id: string) => database.cameras.find(c => c.id === id),
   
+  getCameraByName: (name: string) => database.cameras.find(c => c.name === name),
+  
   getAllCameras: () => database.cameras.map(({ api_key, ...c }) => c),
+  
+  deleteCamera: (id: string) => {
+    const idx = database.cameras.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      database.cameras.splice(idx, 1);
+      save();
+      return true;
+    }
+    return false;
+  },
   
   updateCamera: (id: string, data: Partial<Camera>) => {
     const idx = database.cameras.findIndex(c => c.id === id);

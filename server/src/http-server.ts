@@ -233,6 +233,67 @@ app.get('/api/recordings/:cameraName/:filename', async (req, res) => {
   }
 });
 
+// Create new camera (admin only)
+app.post('/api/cameras', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    jwt.verify(authHeader.replace('Bearer ', ''), config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const { name } = req.body;
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ error: 'Camera name required' });
+  }
+  
+  // Check if camera already exists
+  const existingCamera = db.getCameraByName(name);
+  if (existingCamera) {
+    return res.status(409).json({ error: 'Camera already exists' });
+  }
+  
+  // Generate secure API key
+  const apiKey = require('crypto').randomBytes(16).toString('hex');
+  
+  const camera = db.createCameraIfNotExists(name, apiKey, {
+    resolution: 'pending',
+    framerate: 0,
+    motion_detection: false
+  });
+  
+  console.log(`Camera created: ${name} with API key: ${apiKey}`);
+  res.json({ 
+    id: camera.id, 
+    name: camera.name, 
+    api_key: apiKey,
+    message: 'Save this API key securely - it cannot be retrieved later!'
+  });
+});
+
+// Delete camera (admin only)
+app.delete('/api/cameras/:cameraId', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
+  
+  try {
+    jwt.verify(authHeader.replace('Bearer ', ''), config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const cameraId = req.params.cameraId;
+  const success = db.deleteCamera(cameraId);
+  
+  if (success) {
+    res.json({ success: true, message: 'Camera deleted' });
+  } else {
+    res.status(404).json({ error: 'Camera not found' });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

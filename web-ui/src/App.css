@@ -21,8 +21,78 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .menu-toggle { background: rgba(255,255,255,0.1); border: none; color: #fff; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: background 0.2s; }
 .menu-toggle:hover { background: rgba(255,255,255,0.2); }
 .header h1 { font-size: 1.4rem; font-weight: 600; }
+.header-actions { display: flex; gap: 12px; }
+.manage-cameras-btn { padding: 8px 16px; background: rgba(33, 150, 243, 0.2); color: #2196F3; border: 1px solid #2196F3; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+.manage-cameras-btn:hover { background: #2196F3; color: #fff; }
 .logout-btn { padding: 8px 16px; background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
 .logout-btn:hover { background: #f44336; color: #fff; }
+
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+.modal-content { background: #1a1a1a; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h2 { margin: 0; color: #4CAF50; font-size: 1.3rem; }
+.close-modal { background: none; border: none; color: #888; font-size: 28px; cursor: pointer; padding: 0; line-height: 1; }
+.close-modal:hover { color: #fff; }
+
+/* Camera Manager */
+.create-camera-form { display: flex; gap: 10px; margin-bottom: 20px; }
+.create-camera-form input { flex: 1; padding: 10px 14px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 14px; }
+.create-camera-form input:focus { outline: none; border-color: #4CAF50; }
+.create-btn { padding: 10px 20px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.create-btn:hover { background: #45a049; }
+
+.camera-list-admin h3 { color: #888; font-size: 0.85rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.camera-item-admin { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px; }
+.camera-meta { display: flex; flex-direction: column; gap: 3px; color: #666; font-size: 0.75rem; margin-top: 4px; }
+.delete-btn { padding: 6px 12px; background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.delete-btn:hover { background: #f44336; color: #fff; }
+
+/* API Key Result */
+.api-key-result { text-align: center; padding: 20px 0; }
+.api-key-result h3 { color: #4CAF50; margin-bottom: 16px; }
+.api-key-box { display: flex; gap: 8px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin: 12px 0; align-items: center; }
+.api-key-box code { flex: 1; font-family: 'Courier New', monospace; font-size: 0.85rem; word-break: break-all; text-align: left; color: #4CAF50; }
+.copy-btn { padding: 8px 14px; background: #2196F3; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.85rem; }
+.copy-btn:hover { background: #1976D2; }
+.warning { background: rgba(255, 152, 0, 0.1); border: 1px solid #FF9800; color: #FF9800; padding: 12px; border-radius: 6px; font-size: 0.85rem; margin: 16px 0; }
+.done-btn { padding: 12px 32px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 10px; }
+.done-btn:hover { background: #45a049; }
+
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; display: flex; justify-content: center; align-items: center; }
+.modal-content { background: #1a1a1a; border-radius: 12px; padding: 24px; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.1); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h2 { margin: 0; color: #4CAF50; }
+.close-modal { background: none; border: none; color: #888; font-size: 28px; cursor: pointer; padding: 0; line-height: 1; }
+.close-modal:hover { color: #fff; }
+
+/* Camera Manager */
+.create-camera-form { display: flex; gap: 12px; margin-bottom: 24px; }
+.create-camera-form input { flex: 1; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff; font-size: 15px; }
+.create-camera-form input:focus { outline: none; border-color: #4CAF50; }
+.create-btn { padding: 12px 24px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.create-btn:hover { background: #45a049; }
+
+.camera-list-admin h3 { color: #888; font-size: 0.9rem; margin-bottom: 12px; }
+.camera-item-admin { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px; }
+.camera-meta { display: flex; flex-direction: column; gap: 4px; color: #666; font-size: 0.8rem; margin-top: 4px; }
+.delete-btn { padding: 6px 12px; background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.delete-btn:hover { background: #f44336; color: #fff; }
+
+/* API Key Result */
+.api-key-result { text-align: center; }
+.api-key-result h3 { color: #4CAF50; margin-bottom: 16px; }
+.api-key-box { display: flex; gap: 8px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin: 12px 0; align-items: center; }
+.api-key-box code { flex: 1; font-family: 'Courier New', monospace; font-size: 0.9rem; word-break: break-all; text-align: left; }
+.copy-btn { padding: 8px 16px; background: #2196F3; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
+.copy-btn:hover { background: #1976D2; }
+.warning { background: rgba(255, 152, 0, 0.1); border: 1px solid #FF9800; color: #FF9800; padding: 12px; border-radius: 6px; font-size: 0.9rem; margin: 16px 0; }
+.config-example { text-align: left; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; margin: 16px 0; }
+.config-example h4 { margin: 0 0 12px 0; color: #2196F3; font-size: 0.9rem; }
+.config-example pre { background: rgba(0,0,0,0.5); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem; color: #aaa; }
+.done-btn { padding: 12px 32px; background: #4CAF50; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 16px; }
+.done-btn:hover { background: #45a049; }
 
 /* Dashboard - Mobile First */
 .dashboard { display: flex; flex-direction: column; flex: 1; overflow: hidden; }

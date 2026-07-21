@@ -14,6 +14,9 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [motionPanelOpen, setMotionPanelOpen] = useState(true);
   const [recordingsPanelOpen, setRecordingsPanelOpen] = useState(true);
+  const [showCameraManager, setShowCameraManager] = useState(false);
+  const [newCameraName, setNewCameraName] = useState('');
+  const [generatedKey, setGeneratedKey] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -41,6 +44,45 @@ function App() {
     localStorage.removeItem('lapcam_token');
     setCameras([]);
     setSelectedCamera(null);
+  };
+
+  const handleCreateCamera = async (e) => {
+    e.preventDefault();
+    if (!newCameraName.trim()) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/cameras`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: newCameraName.trim() })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error);
+      setGeneratedKey(data);
+      setNewCameraName('');
+      fetchCameras();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteCamera = async (cameraId) => {
+    if (!window.confirm('Delete this camera?')) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/cameras/${cameraId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!resp.ok) throw new Error((await resp.json()).error);
+      fetchCameras();
+      if (selectedCamera?.id === cameraId) setSelectedCamera(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    alert('Copied!');
   };
 
   const fetchCameras = async () => {
@@ -89,6 +131,51 @@ function App() {
 
   return (
     <div className="app">
+      {showCameraManager && (
+        <div className="modal-overlay" onClick={() => { setShowCameraManager(false); setGeneratedKey(null); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📷 Manage Cameras</h2>
+              <button onClick={() => { setShowCameraManager(false); setGeneratedKey(null); }} className="close-modal">&times;</button>
+            </div>
+            {!generatedKey ? (
+              <>
+                <form onSubmit={handleCreateCamera} className="create-camera-form">
+                  <input type="text" placeholder="Camera name (e.g., laptop, desktop)" value={newCameraName} onChange={(e) => setNewCameraName(e.target.value)} required />
+                  <button type="submit" className="create-btn">Create</button>
+                </form>
+                <div className="camera-list-admin">
+                  <h3>Existing Cameras</h3>
+                  {cameras.map(cam => (
+                    <div key={cam.id} className="camera-item-admin">
+                      <div>
+                        <strong>{cam.name}</strong>
+                        <div className="camera-meta">
+                          <small>ID: {cam.id.slice(0,8)}...</small>
+                          {cam.last_seen && <small>Last: {new Date(cam.last_seen).toLocaleString()}</small>}
+                        </div>
+                      </div>
+                      <button onClick={() => handleDeleteCamera(cam.id)} className="delete-btn">Delete</button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="api-key-result">
+                <h3>✅ Camera Created!</h3>
+                <p><strong>API Key:</strong></p>
+                <div className="api-key-box">
+                  <code>{generatedKey.api_key}</code>
+                  <button onClick={() => copyToClipboard(generatedKey.api_key)} className="copy-btn">Copy</button>
+                </div>
+                <p className="warning">⚠️ Save this! Cannot be retrieved later.</p>
+                <button onClick={() => setGeneratedKey(null)} className="done-btn">Done</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <header className="header">
         <div className="header-left">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="menu-toggle">
@@ -96,7 +183,10 @@ function App() {
           </button>
           <h1>📹 LapCam Dashboard</h1>
         </div>
-        <button onClick={handleLogout} className="logout-btn">Logout</button>
+        <div className="header-actions">
+          <button onClick={() => setShowCameraManager(true)} className="manage-cameras-btn">📷 Cameras</button>
+          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        </div>
       </header>
       <div className="dashboard">
         <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
