@@ -150,9 +150,22 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .motion-events { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; }
 .motion-events h3 { margin-bottom: 12px; color: #FF9800; font-size: 0.9rem; font-weight: 600; }
 .events-list { display: flex; flex-direction: column; gap: 6px; }
-.event-item { background: rgba(255,255,255,0.05); padding: 10px 12px; border-radius: 6px; display: flex; justify-content: space-between; font-size: 0.85rem; }
-.event-time { color: #888; }
-.event-confidence { color: #FF9800; font-weight: 600; }
+.event-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 12px; cursor: default; transition: all 0.2s; }
+.event-item.has-screenshot { cursor: pointer; background: rgba(255,255,255,0.08); }
+.event-item.has-screenshot:hover { background: rgba(255,255,255,0.12); transform: translateX(4px); }
+.event-thumbnail { width: 60px; height: 45px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+.event-details { flex: 1; display: flex; align-items: center; gap: 12px; }
+.event-time { color: #888; font-size: 0.85rem; }
+.event-confidence { color: #FF9800; font-weight: 600; font-size: 0.85rem; }
+.screenshot-badge { font-size: 0.9rem; }
+
+/* Motion Event Detail View */
+.motion-event-detail { text-align: center; }
+.motion-event-detail img { max-width: 100%; max-height: 300px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.1); margin-bottom: 12px; }
+.event-info { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; color: #aaa; }
+.event-info strong { color: #fff; font-size: 0.95rem; }
+.close-btn { padding: 8px 20px; background: rgba(255,255,255,0.1); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.close-btn:hover { background: rgba(255,255,255,0.2); }
 
 .no-camera { display: flex; justify-content: center; align-items: center; height: 50vh; color: #555; font-size: 1rem; }
 .no-events { color: #555; font-size: 0.85rem; text-align: center; padding: 20px; }

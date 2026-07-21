@@ -300,13 +300,43 @@ function MotionEvents({ cameraId, token }) {
     const interval = setInterval(fetchEvents, 5000);
     return () => clearInterval(interval);
   }, [cameraId, token]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  
   if (events.length === 0) return <div className="no-events">No recent motion detected</div>;
+  
+  if (selectedEvent) {
+    return (
+      <div className="motion-event-detail">
+        <img src={`${API_URL}/api/snapshots/${selectedEvent.cameraName}/${selectedEvent.screenshot.split('/').pop()}?token=${token}`} alt="Motion snapshot" />
+        <div className="event-info">
+          <strong>{new Date(selectedEvent.timestamp).toLocaleString()}</strong>
+          <span>{Math.round(selectedEvent.confidence)}% confidence</span>
+        </div>
+        <button onClick={() => setSelectedEvent(null)} className="close-btn">Back to list</button>
+      </div>
+    );
+  }
+  
   return (
     <div className="events-list">
       {events.slice(0, 15).map(event => (
-        <div key={event.id} className="event-item">
-          <span className="event-time">{new Date(event.timestamp).toLocaleTimeString()}</span>
-          <span className="event-confidence">{Math.round(event.confidence)}%</span>
+        <div 
+          key={event.id} 
+          className={`event-item ${event.screenshot ? 'has-screenshot' : ''}`}
+          onClick={() => event.screenshot && setSelectedEvent(event)}
+        >
+          {event.screenshot && (
+            <img 
+              src={`${API_URL}/api/snapshots/${event.cameraName}/${event.screenshot.split('/').pop()}?token=${token}`} 
+              alt="Snapshot" 
+              className="event-thumbnail"
+            />
+          )}
+          <div className="event-details">
+            <span className="event-time">{new Date(event.timestamp).toLocaleTimeString()}</span>
+            <span className="event-confidence">{Math.round(event.confidence)}%</span>
+            {event.screenshot && <span className="screenshot-badge">📸</span>}
+          </div>
         </div>
       ))}
     </div>

@@ -166,25 +166,56 @@ class LapCamClient:
             return False
 
     async def send_motion_event(
-        self, session: ClientSession, confidence: float, timestamp: float
+        self,
+        session: ClientSession,
+        confidence: float,
+        timestamp: float,
+        frame: np.ndarray,
     ):
-        """Report motion event to server"""
+        """Report motion event to server with screenshot"""
         server_url = self.config["server"]["url"]
-        url = f"{server_url}/api/motion-events"
-
-        headers = {"X-API-Key": self.config["server"]["api_key"]}
-
-        payload = {
-            "cameraId": self.camera_name,
-            "cameraName": self.camera_name,
-            "confidence": confidence,
-            "timestamp": timestamp,
+        headers = {
+            "X-API-Key": self.config["server"]["api_key"],
+            "Content-Type": "application/octet-stream",
         }
 
+        # First upload screenshot
+        screenshot_url = None
         try:
-            async with session.post(url, json=payload, headers=headers) as resp:
+            _, screenshot_buffer = cv2.imencode(
+                ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 90]
+            )
+            upload_resp = await session.post(
+                f"{server_url}/api/snapshots",
+                data=screenshot_buffer.tobytes(),
+                headers=headers,
+            )
+            if upload_resp.status == 200:
+                upload_data = await upload_resp.json()
+                screenshot_url = upload_data.get("url")
+                logger.debug(f"Screenshot uploaded: {screenshot_url}")
+        except Exception as e:
+            logger.error(f"Screenshot upload error: {e}")
+
+        # Then send motion event with screenshot URL
+        try:
+            motion_payload = {
+                "cameraId": self.camera_name,
+                "cameraName": self.camera_name,
+                "confidence": confidence,
+                "timestamp": timestamp,
+                "screenshotUrl": screenshot_url,
+            }
+
+            async with session.post(
+                f"{server_url}/api/motion-events",
+                json=motion_payload,
+                headers={"X-API-Key": self.config["server"]["api_key"]},
+            ) as resp:
                 if resp.status == 200:
-                    logger.debug(f"Motion event reported: {confidence:.1f}%")
+                    logger.info(
+                        f"Motion event reported: {confidence:.1f}% with screenshot"
+                    )
                 else:
                     logger.error(f"Motion event failed: {resp.status}")
         except Exception as e:
@@ -226,7 +257,9 @@ class LapCamClient:
                             or now - last_motion_time > motion_cooldown
                         ):
                             last_motion_time = now
-                            await self.send_motion_event(session, confidence, now)
+                            await self.send_motion_event(
+                                session, confidence, now, frame
+                            )
                             logger.info(f"Motion detected: {confidence:.1f}%")
 
                     await asyncio.sleep(frame_interval)

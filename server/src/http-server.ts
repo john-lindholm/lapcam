@@ -138,9 +138,11 @@ app.get('/api/stream/:cameraId/view', async (req, res) => {
 
 // Motion events (simple in-memory store)
 const motionEvents: any[] = [];
+
+// Motion event with optional screenshot URL
 app.post('/api/motion-events', async (req, res) => {
   const apiKey = req.headers['x-api-key'] as string;
-  const { cameraId, cameraName, confidence, timestamp } = req.body;
+  const { cameraId, cameraName, confidence, timestamp, screenshotUrl } = req.body;
   
   if (!apiKey || !cameraId) return res.status(400).json({ error: 'API key and camera ID required' });
   
@@ -152,14 +154,49 @@ app.post('/api/motion-events', async (req, res) => {
     cameraId: camera.id,
     cameraName: camera.name,
     timestamp: timestamp || new Date().toISOString(),
-    confidence: confidence || 0
+    confidence: parseFloat(confidence) || 0,
+    screenshot: screenshotUrl || null
   };
   
   motionEvents.unshift(event);
   if (motionEvents.length > 100) motionEvents.pop();
   
-  console.log(`Motion on ${event.cameraName}: ${event.confidence}%`);
+  console.log(`Motion on ${event.cameraName}: ${event.confidence}%${screenshotUrl ? ' 📸' : ''}`);
   res.json({ success: true });
+});
+
+// Upload screenshot separately
+app.post('/api/snapshots', async (req, res) => {
+  const apiKey = req.headers['x-api-key'] as string;
+  
+  if (!apiKey) return res.status(400).json({ error: 'API key required' });
+  
+  const camera = db.getCameraByApiKey(apiKey);
+  if (!camera) return res.status(401).json({ error: 'Invalid API key' });
+  
+  const frameBuffer = req.body as Buffer;
+  if (!frameBuffer || !(frameBuffer instanceof Buffer)) {
+    return res.status(400).json({ error: 'Image data required' });
+  }
+  
+  const timestamp = Date.now();
+  const s3Key = `snapshots/${camera.name}/${timestamp}.jpg`;
+  
+  try {
+    await s3.putObject({
+      Bucket: config.s3Bucket,
+      Key: s3Key,
+      Body: frameBuffer,
+      ContentType: 'image/jpeg'
+    }).promise();
+    
+    const screenshotUrl = `https://${config.s3Bucket}.s3.amazonaws.com/${s3Key}`;
+    console.log(`Screenshot uploaded: ${s3Key}`);
+    res.json({ success: true, url: screenshotUrl, key: s3Key });
+  } catch (err: any) {
+    console.error('S3 screenshot error:', err.message);
+    res.status(500).json({ error: 'Failed to upload screenshot' });
+  }
 });
 
 app.get('/api/motion-events', async (req, res) => {
@@ -170,6 +207,35 @@ app.get('/api/motion-events', async (req, res) => {
   // Filter by either camera ID (UUID) or camera name
   const events = motionEvents.filter(e => e.cameraId === cameraId || e.cameraName === cameraId).slice(0, 50);
   res.json(events);
+});
+
+// Serve motion snapshot
+app.get('/api/snapshots/:cameraName/:filename', async (req, res) => {
+  const token = req.query.token as string;
+  const cameraName = req.params.cameraName;
+  const filename = req.params.filename;
+  
+  try {
+    if (token) jwt.verify(token, config.jwtSecret);
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  const key = `snapshots/${cameraName}/${filename}`;
+  
+  try {
+    const obj = await s3.getObject({
+      Bucket: config.s3Bucket,
+      Key: key
+    }).promise();
+    
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Length', obj.ContentLength || 0);
+    res.send(obj.Body);
+  } catch (err: any) {
+    console.error('S3 snapshot error:', err.message);
+    res.status(404).json({ error: 'Snapshot not found' });
+  }
 });
 
 // Get recordings from S3
