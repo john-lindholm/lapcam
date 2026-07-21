@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LapCam Client - WebRTC streaming client for home surveillance
+LapCam Client - HTTP MJPEG streaming client for home surveillance
 Supports Ubuntu and Windows with motion detection
 """
 
@@ -12,16 +12,14 @@ import sys
 import os
 import signal
 import uuid
+import base64
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 import cv2
 import numpy as np
-from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
-from aiortc import RTCPeerConnection, RTCSessionDescription, VideoStreamTrack
-from aiortc.contrib.media import MediaBlackhole
-from av import VideoFrame
+from aiohttp import ClientSession, ClientError
 
 
 logging.basicConfig(
@@ -39,13 +37,13 @@ class MotionDetector:
         self.prev_frame: Optional[np.ndarray] = None
         self.motion_detected = False
 
-    def detect(self, frame: np.ndarray) -> bool:
+    def detect_with_confidence(self, frame: np.ndarray) -> tuple[bool, float]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
         if self.prev_frame is None:
             self.prev_frame = gray
-            return False
+            return False, 0.0
 
         frame_delta = cv2.absdiff(self.prev_frame, gray)
         thresh = cv2.threshold(
@@ -57,15 +55,14 @@ class MotionDetector:
         )
         contours = contours[0] if len(contours) == 2 else contours[1]
 
-        motion_found = False
-        for contour in contours:
-            if cv2.contourArea(contour) > self.min_area:
-                motion_found = True
-                break
+        total_area = sum(cv2.contourArea(c) for c in contours)
+        confidence = min(100.0, (total_area / 10000.0) * 100)
+
+        motion_found = total_area > self.min_area
 
         self.prev_frame = gray
         self.motion_detected = motion_found
-        return motion_found
+        return motion_found, confidence
 
 
 class CameraCapture:
@@ -111,32 +108,8 @@ class CameraCapture:
             self.cap = None
 
 
-class WebcamStreamTrack(VideoStreamTrack):
-    """WebRTC video track from webcam"""
-
-    def __init__(self, capture: CameraCapture):
-        super().__init__()
-        self.capture = capture
-        self.frame_count = 0
-
-    async def recv(self) -> VideoFrame:
-        frame = await asyncio.get_event_loop().run_in_executor(None, self.capture.read)
-        if frame is None:
-            raise Exception("Camera read failed")
-
-        pts, time_base = await self.next_timestamp()
-
-        # Convert BGR to RGB
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        video_frame = VideoFrame.from_ndarray(frame_rgb, format="rgb24")
-        video_frame.pts = pts
-        video_frame.time_base = time_base
-        return video_frame
-
-
 class LapCamClient:
-    """Main client application"""
+    """Main HTTP streaming client application"""
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -159,107 +132,56 @@ class LapCamClient:
             else None
         )
 
-        self.ws: Optional[ClientWebSocketResponse] = None
-        self.pc: Optional[RTCPeerConnection] = None
-        self.video_track: Optional[WebcamStreamTrack] = None
         self.running = False
-        self.connected = False
+        self.frames_sent = 0
+        self.last_heartbeat = 0
 
-    async def connect_signaling(self, session: ClientSession) -> bool:
-        """Connect to signaling server"""
+    async def send_frame(self, session: ClientSession, frame: np.ndarray) -> bool:
+        """Send frame to server via HTTP POST"""
         server_url = self.config["server"]["url"]
-        ws_url = f"{server_url}/ws/{self.camera_name}"
+        url = f"{server_url}/api/stream/{self.camera_name}/frame"
 
         headers = {"X-API-Key": self.config["server"]["api_key"]}
+
+        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        frame_bytes = buffer.tobytes()
 
         try:
-            self.ws = await session.ws_connect(ws_url, headers=headers)
-            logger.info(f"Connected to signaling server: {ws_url}")
-            return True
+            async with session.post(url, data=frame_bytes, headers=headers) as resp:
+                if resp.status == 200:
+                    self.frames_sent += 1
+                    return True
+                else:
+                    logger.error(f"Frame upload failed: {resp.status}")
+                    return False
         except Exception as e:
-            logger.error(f"Failed to connect to signaling: {e}")
+            logger.error(f"Frame upload error: {e}")
             return False
 
-    async def register_camera(self, session: ClientSession) -> bool:
-        """Register camera with server"""
+    async def send_motion_event(
+        self, session: ClientSession, confidence: float, timestamp: float
+    ):
+        """Report motion event to server"""
         server_url = self.config["server"]["url"]
-        url = f"{server_url}/api/cameras/register"
-
-        payload = {
-            "camera_name": self.camera_name,
-            "capabilities": {
-                "resolution": f"{self.config['camera']['width']}x{self.config['camera']['height']}",
-                "framerate": self.config["camera"]["framerate"],
-                "motion_detection": self.motion_detector is not None,
-            },
-        }
+        url = f"{server_url}/api/motion-events"
 
         headers = {"X-API-Key": self.config["server"]["api_key"]}
+
+        payload = {
+            "cameraId": self.camera_name,
+            "cameraName": self.camera_name,
+            "confidence": confidence,
+            "timestamp": timestamp,
+        }
 
         try:
             async with session.post(url, json=payload, headers=headers) as resp:
                 if resp.status == 200:
-                    data = await resp.json()
-                    logger.info(f"Camera registered: {data}")
-                    return True
+                    logger.debug(f"Motion event reported: {confidence:.1f}%")
                 else:
-                    logger.error(f"Registration failed: {resp.status}")
-                    return False
+                    logger.error(f"Motion event failed: {resp.status}")
         except Exception as e:
-            logger.error(f"Registration error: {e}")
-            return False
-
-    async def setup_webrtc(self) -> bool:
-        """Setup WebRTC peer connection"""
-        self.pc = RTCPeerConnection()
-
-        @self.pc.on("connectionstatechange")
-        async def on_connection_state_change():
-            logger.info(f"Connection state: {self.pc.connectionState}")
-            if self.pc.connectionState == "failed":
-                await self.pc.close()
-                self.connected = False
-            elif self.pc.connectionState == "connected":
-                self.connected = True
-
-        self.video_track = WebcamStreamTrack(self.capture)
-        self.pc.addTrack(self.video_track)
-
-        return True
-
-    async def negotiate_webrtc(self) -> bool:
-        """Perform WebRTC offer/answer exchange"""
-        if not self.ws:
-            return False
-
-        # Create offer
-        offer = await self.pc.createOffer()
-        await self.pc.setLocalDescription(offer)
-
-        # Send offer to server
-        await self.ws.send_json(
-            {
-                "type": "offer",
-                "sdp": self.pc.localDescription.sdp,
-                "camera_name": self.camera_name,
-            }
-        )
-
-        # Wait for answer
-        msg = await self.ws.receive()
-        if msg.type != WSMsgType.TEXT:
-            return False
-
-        data = msg.json()
-        if data.get("type") != "answer":
-            logger.error(f"Unexpected message: {data}")
-            return False
-
-        answer = RTCSessionDescription(sdp=data["sdp"], type="answer")
-        await self.pc.setRemoteDescription(answer)
-
-        logger.info("WebRTC negotiation complete")
-        return True
+            logger.error(f"Motion event error: {e}")
 
     async def run(self):
         """Main client loop"""
@@ -269,66 +191,39 @@ class LapCamClient:
             return
 
         async with ClientSession() as session:
-            # Register camera
-            if not await self.register_camera(session):
-                logger.warning("Camera registration failed, continuing anyway")
-
-            # Connect to signaling
-            if not await self.connect_signaling(session):
-                return
-
-            # Setup WebRTC
-            if not await self.setup_webrtc():
-                return
-
-            # Negotiate WebRTC
-            if not await self.negotiate_webrtc():
-                return
-
-            # Main loop - handle signaling messages and motion detection
             last_motion_time = None
-            motion_cooldown = 5.0  # seconds between motion reports
+            motion_cooldown = 5.0
+            frame_interval = 1.0 / self.config["camera"]["framerate"]
 
             while self.running:
                 try:
-                    # Check for signaling messages
-                    if self.ws and not self.ws.closed:
-                        msg = await asyncio.wait_for(self.ws.receive(), timeout=1.0)
+                    frame = await asyncio.get_event_loop().run_in_executor(
+                        None, self.capture.read
+                    )
+                    if frame is None:
+                        await asyncio.sleep(0.1)
+                        continue
 
-                        if msg.type == WSMsgType.TEXT:
-                            data = msg.json()
-                            msg_type = data.get("type")
+                    # Send frame to server
+                    await self.send_frame(session, frame)
 
-                            if msg_type == "ping":
-                                await self.ws.send_json({"type": "pong"})
-                            elif msg_type == "reconnect":
-                                logger.info("Reconnect requested")
-                                await self.negotiate_webrtc()
+                    # Motion detection
+                    if self.motion_detector:
+                        motion, confidence = (
+                            self.motion_detector.detect_with_confidence(frame)
+                        )
+                        now = datetime.now().timestamp()
 
-                    # Motion detection reporting
-                    if self.motion_detector and self.capture.cap is not None:
-                        frame = self.capture.read()
-                        if frame is not None:
-                            motion = self.motion_detector.detect(frame)
-                            now = datetime.now().timestamp()
+                        if motion and (
+                            last_motion_time is None
+                            or now - last_motion_time > motion_cooldown
+                        ):
+                            last_motion_time = now
+                            await self.send_motion_event(session, confidence, now)
+                            logger.info(f"Motion detected: {confidence:.1f}%")
 
-                            if motion and (
-                                last_motion_time is None
-                                or now - last_motion_time > motion_cooldown
-                            ):
-                                last_motion_time = now
-                                if self.ws and not self.ws.closed:
-                                    await self.ws.send_json(
-                                        {
-                                            "type": "motion",
-                                            "camera_name": self.camera_name,
-                                            "timestamp": now,
-                                        }
-                                    )
-                                logger.debug("Motion detected!")
+                    await asyncio.sleep(frame_interval)
 
-                except asyncio.TimeoutError:
-                    continue
                 except Exception as e:
                     logger.error(f"Error in main loop: {e}")
                     await asyncio.sleep(1)
@@ -338,6 +233,7 @@ class LapCamClient:
         logger.info("Stopping client...")
         self.running = False
         self.capture.stop()
+        logger.info(f"Total frames sent: {self.frames_sent}")
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -347,7 +243,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="LapCam Client")
+    parser = argparse.ArgumentParser(description="LapCam HTTP Client")
     parser.add_argument(
         "--config", "-c", required=True, help="Path to configuration file"
     )
@@ -363,12 +259,10 @@ async def main():
 
     # Setup signal handlers
     loop = asyncio.get_event_loop()
-    stop_event = asyncio.Event()
 
     def signal_handler():
         logger.info("Shutdown signal received")
         client.stop()
-        stop_event.set()
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, signal_handler)
