@@ -257,20 +257,23 @@ async def main():
 
     client = LapCamClient(config)
 
-    # Setup signal handlers
+    # Setup signal handlers (Unix only - Windows uses KeyboardInterrupt)
     loop = asyncio.get_event_loop()
 
     def signal_handler():
         logger.info("Shutdown signal received")
         client.stop()
 
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, signal_handler)
+    import platform
+
+    if platform.system() != "Windows":
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, signal_handler)
 
     try:
         await client.run()
     except KeyboardInterrupt:
-        pass
+        logger.info("Keyboard interrupt received")
     finally:
         client.stop()
         await asyncio.sleep(0.5)
