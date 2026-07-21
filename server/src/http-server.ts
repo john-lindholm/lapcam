@@ -9,6 +9,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.raw({ limit: '1mb', type: 'application/octet-stream' }));
+import path from 'path';
+app.use(express.static(path.join(__dirname, '../web-ui/build')));
 
 AWS.config.update({ region: config.awsRegion });
 const s3 = new AWS.S3();
