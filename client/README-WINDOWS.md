@@ -2,67 +2,135 @@
 
 ## Quick Start
 
-### Option 1: Download Pre-built Executable (Recommended)
-1. Download `LapCamClient.zip` from releases
-2. Extract to a folder (e.g., `C:\LapCam`)
-3. Copy your `config.aws.yaml` to the same folder
-4. Run `LapCamClient.exe --config config.aws.yaml`
+### Option 1: Run from Source (Development)
 
-### Option 2: Build Yourself
+```powershell
+# 1. Install Python 3.10+ from https://www.python.org/downloads/
+#    ☑ Check "Add Python to PATH" during install
 
-#### Prerequisites
-- Python 3.10 or higher ([Download](https://www.python.org/downloads/))
-- Microsoft Visual C++ Redistributable ([Download](https://aka.ms/vs/17/release/vc_redist.x64.exe))
+# 2. Open Command Prompt in this folder
+cd C:\path\to\lapcam\client
 
-#### Build Steps
-1. Open Command Prompt as Administrator
-2. Navigate to the client folder:
-   ```cmd
-   cd C:\path\to\lapcam\client
-   ```
+# 3. Create virtual environment
+python -m venv venv
+venv\Scripts\activate
 
-3. Run the build script:
-   ```cmd
-   build-windows.bat
-   ```
+# 4. Install dependencies
+pip install --upgrade pip
+pip install -r requirements-windows.txt
 
-4. Wait for the build to complete (~5-10 minutes)
-
-5. Find the executable in:
-   ```
-   dist\LapCamClient\LapCamClient.exe
-   ```
-
-## Usage
-
-### Running the Client
-```cmd
-LapCamClient.exe --config config.aws.yaml
+# 5. Run the client
+python main.py --config config.aws.yaml
 ```
 
-### Run as Background Service (Windows)
+### Option 2: Build Executable (Production)
 
-1. Download [NSSM](https://nssm.cc/download)
+```powershell
+# 1. Open Command Prompt as Administrator
+cd C:\path\to\lapcam\client
 
-2. Install service:
-   ```cmd
-   nssm install LapCamClient "C:\path\to\LapCamClient.exe" "--config" "config.aws.yaml"
-   ```
+# 2. Run build script
+.\build-windows.bat
 
-3. Start service:
-   ```cmd
-   nssm start LapCamClient
-   ```
+# 3. Wait 5-10 minutes for build to complete
 
-4. Service will auto-start on boot
+# 4. Executable will be in: dist\LapCamClient\LapCamClient.exe
+```
 
-### Configuration
+---
+
+## Installation Methods
+
+### Method A: Install as Windows Service (Recommended for 24/7)
+
+**Runs automatically on boot, even before login**
+
+```powershell
+# 1. Open PowerShell as Administrator
+cd C:\path\to\lapcam\client
+
+# 2. Run installer script
+.\install-windows-service.ps1
+
+# 3. That's it! Service will auto-start on every boot
+```
+
+**Management Commands:**
+```powershell
+# Check status
+schtasks /Query /TN "LapCam Client"
+
+# Stop temporarily
+schtasks /End /TN "LapCam Client"
+
+# Start manually
+schtasks /Run /TN "LapCam Client"
+
+# Uninstall service
+.\install-windows-service.ps1 -Uninstall
+```
+
+**Features:**
+- ✅ Starts at Windows boot (no login required)
+- ✅ Runs as SYSTEM (highest privileges)
+- ✅ Auto-restarts on crash (unlimited retries)
+- ✅ Works on battery or AC power
+- ✅ Uses built-in Windows Task Scheduler (no third-party tools)
+
+---
+
+### Method B: Manual Startup (Simple)
+
+**Only works when user is logged in**
+
+```powershell
+# Just run it directly
+python main.py --config config.aws.yaml
+
+# Or if you built the .exe:
+.\dist\LapCamClient\LapCamClient.exe --config config.aws.yaml
+```
+
+**To auto-start on login:**
+1. Press `Win + R`
+2. Type: `shell:startup`
+3. Create shortcut to `LapCamClient.exe` or a batch file
+
+---
+
+## Preventing Sleep Mode (CRITICAL!)
+
+Your PC will go to sleep when idle, stopping camera monitoring.
+
+### Quick Fix: Run the Disable Sleep Script
+
+```powershell
+# Right-click this file → Run as Administrator
+.\disable-sleep-windows.bat
+```
+
+This sets your power plan to **High Performance** and disables:
+- Monitor timeout (keeps screen on)
+- Hard disk timeout
+- Standby/sleep mode
+
+### Manual Alternative
+
+1. Open **Settings** → **System** → **Power & sleep**
+2. Set these to **"Never"** (when plugged in):
+   - Screen → turn off after: **Never**
+   - Sleep → PC goes to sleep after: **Never**
+
+---
+
+## Configuration
 
 Edit `config.aws.yaml`:
+
 ```yaml
 server:
   url: "https://sec.sigma-chat.biz"
-  api_key: "your-api-key-here"
+  api_key: "your-api-key-here"  # Get from web UI
 
 camera:
   device_index: 0  # Change if you have multiple cameras
@@ -75,68 +143,66 @@ stream:
   motion_detection: true
   motion_sensitivity: 0.4
   motion_min_area: 500
+
+jpeg_quality: 75
+logging:
+  level: "INFO"
 ```
+
+---
 
 ## Troubleshooting
 
 ### Camera Not Found
 - Check `device_index` in config (try 0, 1, 2...)
 - Ensure camera is not used by another app (Zoom, Teams, etc.)
+- Test camera in Windows Camera app first
 
-### Build Fails
-- Make sure you're running as Administrator
-- Install Visual C++ Redistributable
-- Try: `pip install --upgrade pip setuptools wheel`
+### Service Won't Start
+```powershell
+# Check if task exists
+schtasks /Query /TN "LapCam Client"
+
+# View last run result
+Get-ScheduledTaskInfo -TaskName "LapCam Client"
+
+# Run manually to see errors
+python main.py --config config.aws.yaml
+```
 
 ### High CPU Usage
 - Lower framerate in config (try 10 instead of 15)
 - Reduce resolution (try 320x240)
+- Disable motion detection if not needed
+
+### Build Fails
+- Make sure you're running as Administrator
+- Try: `pip install --upgrade pip setuptools wheel`
+- Delete `venv` folder and rebuild: `rmdir /s venv` then `.\build-windows.bat`
+
+---
 
 ## File Structure
+
 ```
 LapCamClient/
-├── LapCamClient.exe      # Main executable
-├── config.aws.yaml       # Configuration file
-└── logs/                 # Log files (created automatically)
+├── LapCamClient.exe          # Main executable (after build)
+├── main.py                   # Source code (if running from source)
+├── config.aws.yaml           # Configuration file
+├── requirements-windows.txt  # Python dependencies
+├── install-windows-service.ps1  # Service installer
+├── disable-sleep-windows.bat    # Prevent sleep mode
+└── logs/                     # Log files (created automatically)
 ```
-
-## Support
-For issues, check server logs at: https://sec.sigma-chat.biz/
-
-## Preventing Sleep Mode (IMPORTANT!)
-
-Your Windows PC will go to sleep when idle, which stops camera monitoring.
-
-### Option 1: Run the Disable Sleep Script (Recommended)
-
-1. Right-click `disable-sleep-windows.bat`
-2. Select **"Run as administrator"**
-3. Click "Yes" on the UAC prompt
-4. Wait for "Done!" message
-
-This sets your power plan to **High Performance** and disables sleep entirely.
-
-### Option 2: Manual Settings
-
-1. Open **Settings** → **System** → **Power & sleep**
-2. Set these to **"Never"**:
-   - Screen → When plugged in, turn off after: **Never**
-   - Sleep → When plugged in, PC goes to sleep after: **Never**
-
-### Option 3: Control Panel
-
-1. Open **Control Panel** → **Power Options**
-2. Select **"High performance"** plan
-3. Click **"Change plan settings"**
-4. Set both options to **"Never"**
-5. Click **"Save changes"**
 
 ---
 
 ## Quick Checklist Before Vacation
 
 - [ ] Run `disable-sleep-windows.bat` as Administrator
-- [ ] Verify camera is streaming (green light on camera)
+- [ ] Install service: `.\install-windows-service.ps1`
+- [ ] Verify service status: `schtasks /Query /TN "LapCam Client"`
+- [ ] Test camera is streaming (green light on camera)
 - [ ] Test web UI shows 🟢 Live status
 - [ ] Wave hand in front of camera - verify motion detected
 - [ ] Check screenshot appears in UI
@@ -146,12 +212,10 @@ This sets your power plan to **High Performance** and disables sleep entirely.
 
 ---
 
-## Reverting After Vacation
+## Support
 
-When you return, re-enable normal power saving:
+For issues, check:
+- Server logs: https://sec.sigma-chat.biz/
+- Local logs: Check `logs/` folder or Windows Event Viewer
+- Motion events: View in web UI under selected camera
 
-```cmd
-powercfg -restoredefaultschemes
-```
-
-Or manually set your preferred power plan back.
