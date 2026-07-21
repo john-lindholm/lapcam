@@ -102,3 +102,56 @@ LapCamClient/
 
 ## Support
 For issues, check server logs at: https://sec.sigma-chat.biz/
+
+## Preventing Sleep Mode (IMPORTANT!)
+
+Your Windows PC will go to sleep when idle, which stops camera monitoring.
+
+### Option 1: Run the Disable Sleep Script (Recommended)
+
+1. Right-click `disable-sleep-windows.bat`
+2. Select **"Run as administrator"**
+3. Click "Yes" on the UAC prompt
+4. Wait for "Done!" message
+
+This sets your power plan to **High Performance** and disables sleep entirely.
+
+### Option 2: Manual Settings
+
+1. Open **Settings** → **System** → **Power & sleep**
+2. Set these to **"Never"**:
+   - Screen → When plugged in, turn off after: **Never**
+   - Sleep → When plugged in, PC goes to sleep after: **Never**
+
+### Option 3: Control Panel
+
+1. Open **Control Panel** → **Power Options**
+2. Select **"High performance"** plan
+3. Click **"Change plan settings"**
+4. Set both options to **"Never"**
+5. Click **"Save changes"**
+
+---
+
+## Quick Checklist Before Vacation
+
+- [ ] Run `disable-sleep-windows.bat` as Administrator
+- [ ] Verify camera is streaming (green light on camera)
+- [ ] Test web UI shows 🟢 Live status
+- [ ] Wave hand in front of camera - verify motion detected
+- [ ] Check screenshot appears in UI
+- [ ] Plug in laptop charger (don't run on battery!)
+- [ ] Close other applications (free up resources)
+- [ ] Test remote access from phone (use mobile data, not WiFi)
+
+---
+
+## Reverting After Vacation
+
+When you return, re-enable normal power saving:
+
+```cmd
+powercfg -restoredefaultschemes
+```
+
+Or manually set your preferred power plan back.
