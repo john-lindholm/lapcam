@@ -11,6 +11,9 @@ function App() {
   const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [motionPanelOpen, setMotionPanelOpen] = useState(true);
+  const [recordingsPanelOpen, setRecordingsPanelOpen] = useState(true);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -87,11 +90,16 @@ function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>📹 LapCam Dashboard</h1>
+        <div className="header-left">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="menu-toggle">
+            {sidebarOpen ? '◀' : '▶'}
+          </button>
+          <h1>📹 LapCam Dashboard</h1>
+        </div>
         <button onClick={handleLogout} className="logout-btn">Logout</button>
       </header>
       <div className="dashboard">
-        <div className="sidebar">
+        <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
           <div className="camera-list">
             <h2>📷 Cameras</h2>
             {cameras.map(camera => (
@@ -105,17 +113,23 @@ function App() {
           {selectedCamera && (
             <>
               <div className="motion-panel">
-                <h2>🔍 Recent Motion</h2>
-                <MotionEvents cameraId={selectedCamera.id} token={token} />
+                <div className="panel-header" onClick={() => setMotionPanelOpen(!motionPanelOpen)}>
+                  <h2>🔍 Recent Motion</h2>
+                  <span className="toggle-icon">{motionPanelOpen ? '▼' : '▶'}</span>
+                </div>
+                {motionPanelOpen && <MotionEvents cameraId={selectedCamera.id} token={token} />}
               </div>
               <div className="recordings-panel">
-                <h2>📁 Recordings</h2>
-                <Recordings cameraName={selectedCamera.name} token={token} />
+                <div className="panel-header" onClick={() => setRecordingsPanelOpen(!recordingsPanelOpen)}>
+                  <h2>📁 Recordings</h2>
+                  <span className="toggle-icon">{recordingsPanelOpen ? '▼' : '▶'}</span>
+                </div>
+                {recordingsPanelOpen && <Recordings cameraName={selectedCamera.name} token={token} />}
               </div>
             </>
           )}
         </div>
-        <div className="main-content">
+        <div className={`main-content ${!sidebarOpen ? 'full-width' : ''}`}>
           {selectedCamera ? (
             <>
               <div className="stream-header">
