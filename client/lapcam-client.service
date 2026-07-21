@@ -1,0 +1,19 @@
+[Unit]
+Description=LapCam Surveillance Client
+After=network.target
+
+[Service]
+Type=simple
+User=johnl
+WorkingDirectory=/home/johnl/git/lapcam/client
+ExecStart=/home/johnl/git/lapcam/client/venv/bin/python3 main.py --config config.aws.yaml
+Restart=always
+RestartSec=10
+Environment="PYTHONUNBUFFERED=1"
+
+# Prevent issues with GUI session ending
+Environment="DISPLAY=:0"
+Environment="XDG_RUNTIME_DIR=/run/user/12306"
+
+[Install]
+WantedBy=multi-user.target
